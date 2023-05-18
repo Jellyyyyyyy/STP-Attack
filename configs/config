@@ -1,6 +1,7 @@
 {
     "version": "1.3",
     "verbose": false,
+    "bridge_name": "hijack_stp_br",
     "interval": {
         "stp": 2,
         "dtp": 30
