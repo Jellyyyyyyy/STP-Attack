@@ -1,4 +1,4 @@
-# Network Hijack & Forwarding Tool
+# Root bridge hijack attack
 
 This is a command-line tool developed in Python that uses the `curses` library for its graphical interface. The tool can send Bridge Protocol Data Unit (BPDU) packets to hijack the root bridge in a network, and it can enable packet forwarding using a bridge. However, the packet forwarding feature is only available on PCs with at least two network interfaces.
 
