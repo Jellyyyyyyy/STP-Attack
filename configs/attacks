@@ -2,17 +2,28 @@
   "hijack": {
     "enabled": true,
     "start": "Start Root Bridge Hijack",
-    "stop": "Stop Hijack"
+    "stop": "Stop Hijack",
+    "settings": {
+      "mac_address": "00:00:00:00:00:01",
+      "interval": 2
+    }
   },
   "forward": {
     "enabled": true,
     "start": "Enable forwarding packets",
-    "stop": "Disable forwarding packets"
+    "stop": "Disable forwarding packets",
+    "settings": {
+      "bridge_name": "hijack_stp_br"
+    }
   },
   "trunk": {
     "enabled": false,
     "start": "Enable trunking",
-    "stop": "Disable trunking"
+    "stop": "Disable trunking",
+    "settings": {
+      "mac_address": "0c:7c:e8:46:d5:95",
+      "interval": 30
+    }
   },
   "quit": "Quit (stops all attacks)"
 }

