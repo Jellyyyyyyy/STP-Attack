@@ -57,7 +57,7 @@ def add_iface_to_br(bridge_name, interface_name):
     sock.close()
 
 
-def remove_bridge_iface(bridge_name, interface_name):
+def del_iface_from_br(bridge_name, interface_name):
     """Remove interface from bridge"""
     interface_index = get_iface_index(interface_name)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -86,7 +86,7 @@ def delete_br_ifaces(bridge_name, verbose=False):
     """Deletes all interfaces from bridge"""
     interfaces = get_ifaces_in_br(bridge_name)
     for interface in interfaces:
-        remove_bridge_iface(bridge_name, interface)
+        del_iface_from_br(bridge_name, interface)
         vprint(f"Removed interface {interface} from bridge {bridge_name}", verbose)
 
 
