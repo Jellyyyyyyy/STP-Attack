@@ -4,14 +4,17 @@ This is a command-line tool developed in Python that uses the `curses` library f
 
 ## Prerequisites
 
-This tool is designed to run on Linux machines and requires root privileges. Also, for a man-in-the-middle attack scenario with packet forwarding, two network interfaces are needed. However, the Spanning Tree Protocol (STP) attack can be conducted with just one network interface.
+- Linux Operating System
+- Root Privileges
+- 1 Network interface for hijacking root bridge
+- 2 Network interface for Man-in-the-middle
 
 ## Installation
 
 Clone the repository and install the required Python libraries as follows:
 
 ```bash
-git clone https://github.com/username/project.git
+git clone https://github.com/Jellyyyyyyy/STP_MiTM.git
 cd project
 pip install -r requirements.txt
 ```
@@ -28,6 +31,10 @@ The tool provides a terminal-based GUI where you can choose from various options
 
 ## Features
 
-- **Root Bridge Hijacking:** This tool can hijack the root bridge in a network by sending BPDU packets.
+- **Root Bridge Hijacking:** This tool can hijack the root bridge in a network by sending BPDU packets.<br>NOTE: Will Not work if BPDU guard is enabled on the switche's interface
 - **Packet Forwarding:** Enable or disable packet forwarding using a bridge. This feature requires at least two network interfaces.
 - **Trunk Interface Establishment:** Establish a trunk interface by sending a crafted Dynamic Trunking Protocol (DTP) packet.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
