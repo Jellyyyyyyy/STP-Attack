@@ -1,0 +1,18 @@
+{
+  "hijack": {
+    "enabled": true,
+    "start": "Start Root Bridge Hijack",
+    "stop": "Stop Hijack"
+  },
+  "forward": {
+    "enabled": true,
+    "start": "Enable forwarding packets",
+    "stop": "Disable forwarding packets"
+  },
+  "trunk": {
+    "enabled": false,
+    "start": "Enable trunking",
+    "stop": "Disable trunking"
+  },
+  "quit": "Quit (stops all attacks)"
+}
