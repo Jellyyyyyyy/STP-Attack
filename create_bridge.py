@@ -161,14 +161,14 @@ def start(bridge_name, interfaces: list, verbose=False):
         bring_iface_up(bridge_name)
     else:
         vprint(f"Could not verify bridge, aborting...", verbose)
-        end(bridge_name, verbose)
+        stop(bridge_name, verbose)
 
     monitor_thread = Thread(target=monitor, args=(bridge_name, interfaces,))
     monitor_thread.daemon = True
     monitor_thread.start()
 
 
-def end(bridge_name, verbose=False):
+def stop(bridge_name, verbose=False):
     """Removes interfaces from the bridge and deletes bridge"""
     if bridge_exists(bridge_name):
         vprint(f"Found bridge {bridge_name}, deleting...", verbose)
