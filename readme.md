@@ -6,6 +6,7 @@ This is a command-line tool developed in Python that uses the `curses` library f
 
 - Linux Operating System
 - Root Privileges
+- Python version 3.5+ (Script was written in Python 3.11.3)
 - 1 Network interface to Hijack root bridge
 - 2 Network interfaces to Enable packet forwarding (Man-in-the-Middle)
 

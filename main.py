@@ -239,13 +239,14 @@ def main():
         sys.exit(1)
 
     system_interfaces.remove("lo")  # loopback interface cannot be used
-    if len(system_interfaces) < 2:
+    if len(system_interfaces) < 1:
+        print("No network interface detected. Not possible to launch attack. ")
+        sys.exit(1)
+    elif len(system_interfaces) < 2:
         print("WARNING: Only 1 network interface detected (loopback cannot be used).")
         if input("Forwarding packets will not be possible. Do you wish to continue? (Y/N): ").lower() not in ["y", "ye", "yes"]:
             sys.exit(1)
-    elif len(system_interfaces) < 1:
-        print("No network interface detected. Not possible to launch attack. ")
-        sys.exit(1)
+
 
     stdscr = curses.initscr()
     curses.cbreak()
