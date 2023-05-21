@@ -1,14 +1,34 @@
-# Root bridge hijack attack
+# STP Root Bridge Hijack 
 
-This is a command-line tool developed in Python that uses the `curses` library for its graphical interface. The tool can send Bridge Protocol Data Unit (BPDU) packets to hijack the root bridge in a network, and it can enable packet forwarding using a bridge.
+An interactive Python program capable of sending Bridge Protocol Data Unit (BPDU) packets to hijack the root bridge in a network and enable packet forwarding using a bridge.
+The script uses the `curses`, `scapy` and `netifaces` libraries to establish the compromised switch as the root switch, enabling the user to gain access to the packets in the network for various attacks (see [Features](#features)).
+
+
+## Disclaimer
+
+This script is developed for a project, do not use it for malicious purposes (Lol)
+
+### Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Features](#features)
 
 ## Prerequisites
 
-- Linux Operating System
-- Root Privileges
-- Python version 3.5+ (Script was written in Python 3.11.3)
-- 1 Network interface to Hijack root bridge
-- 2 Network interfaces to Enable packet forwarding (Man-in-the-Middle)
+1. **OS**
+    * Linux Operating System
+    * Root Privileges
+
+2. **Python modules**
+    * Python version 3.5+ (Script was written in Python 3.11.3)
+    * Scapy Module: Can be downloaded using `pip install scapy`. For Scapy [installation](https://github.com/secdev/scapy/blob/master/README.md) and [documentation](https://scapy.readthedocs.io/en/latest/introduction.html) to get started on Scapy
+    * Netifaces Module: Can be downloaded using `pip install netifaces`.
+
+3. **Others**
+    * 1 network interface to hijack root bridge
+    * 2 network interfaces to enable packet forwarding (Man-in-The-Middle)
 
 ## Installation
 
@@ -28,13 +48,15 @@ To use this tool, run the script with root privileges:
 sudo python3 main.py
 ```
 
-The tool provides a terminal-based GUI where you can choose from various options. Follow the instructions on the screen to perform the desired actions.
+The tool provides a terminal-based GUI where you can choose from various options. Follow the instructions on the screen to perform the desired actions. 
+(do we wanna add a gif to show how the gui is being used or nah?????????)
 
 ## Features
 
 - **Root Bridge Hijacking:** This tool can hijack the root bridge in a network by sending BPDU packets.<br>NOTE: Will Not work if BPDU guard is enabled on the switch's interface
 - **Packet Forwarding:** Enable or disable packet forwarding using a bridge. This feature requires at least two network interfaces.
 - **Trunk Interface Establishment:** Establish a trunk interface by sending a crafted Dynamic Trunking Protocol (DTP) packet.
+- **DNS Spoofing:** WE SPOOF DA DNS HEHEHEEEE
 
 ## License
 
