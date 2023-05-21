@@ -35,7 +35,7 @@ def craft_false_response(pkt, fakeip, interfaces):
     # print(f"Sending {pkt[IP].src} false DNS response: {domain} resolved to {fakeip}\n\n")
 
 
-def start(ip, ifaces):
+def start(fakeip, interfaces):
     dns_thread = Thread(target=sniffer, args=(fakeip, interfaces,))
     dns_thread.daemon = True
     dns_thread.start()
