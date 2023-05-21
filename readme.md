@@ -3,11 +3,6 @@
 An interactive Python program capable of sending Bridge Protocol Data Unit (BPDU) packets to hijack the root bridge in a network and enable packet forwarding using a bridge.
 The script uses the `curses`, `scapy` and `netifaces` libraries to establish the compromised switch as the root switch, enabling the user to gain access to the packets in the network for various attacks (see [Features](#features)).
 
-
-## Disclaimer
-
-This script is developed for a project, do not use it for malicious purposes (Lol)
-
 ### Table of Contents
 
 - [Prerequisites](#prerequisites)
