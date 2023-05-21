@@ -1,5 +1,8 @@
 # STP Root Bridge Hijack 
 
+![Python Version](https://img.shields.io/badge/python-3.x-blue?style=for-the-badge&logo=python)
+![OS](https://img.shields.io/badge/OS-GNU%2FLinux-red?style=for-the-badge&logo=linux)
+
 An interactive Python program capable of sending Bridge Protocol Data Unit (BPDU) packets to hijack the root bridge in a network and enable packet forwarding using a bridge.
 The script uses the `curses`, `scapy` and `netifaces` libraries to establish the compromised switch as the root switch, enabling the user to gain access to the packets in the network for various attacks (see [Features](#features)).
 

