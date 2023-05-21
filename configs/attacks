@@ -25,5 +25,11 @@
       "interval": 30
     }
   },
+  "dns": {
+    "enabled": true,
+    "start": "Enable DNS hijacking",
+    "stop": "Disable DNS hijacking",
+    "settings": {}
+  },
   "quit": "Quit (stops all attacks)"
 }
