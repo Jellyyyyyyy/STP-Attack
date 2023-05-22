@@ -52,4 +52,4 @@ def start(fakeip, interfaces, verbose=False):
 
 
 def stop():
-    config["VERBOSE"] = True
+    config["STOP_SNIFFING"] = True
