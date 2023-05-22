@@ -16,14 +16,11 @@
       "bridge_name": "hijack_stp_br"
     }
   },
-  "trunk": {
-    "enabled": false,
-    "start": "Enable trunking",
-    "stop": "Disable trunking",
-    "settings": {
-      "mac_address": "0c:7c:e8:46:d5:95",
-      "interval": 30
-    }
+  "arp": {
+    "enabled": true,
+    "start": "Enable ARP spoofing",
+    "stop": "Disable ARP spoofing",
+    "settings": {}
   },
   "dns": {
     "enabled": true,

