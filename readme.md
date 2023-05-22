@@ -51,10 +51,25 @@ The tool provides a terminal-based GUI where you can choose from various options
 
 ## Features
 
-- **Root Bridge Hijacking:** This tool can hijack the root bridge in a network by sending BPDU packets.<br>NOTE: Will Not work if BPDU guard is enabled on the switch's interface
-- **Packet Forwarding:** Enable or disable packet forwarding using a bridge. This feature requires at least two network interfaces.
-- **Trunk Interface Establishment:** Establish a trunk interface by sending a crafted Dynamic Trunking Protocol (DTP) packet.
-- **DNS Spoofing:** WE SPOOF DA DNS HEHEHEEEE
+- **Root Bridge Hijacking**
+  - Manipulates the root bridge by transmitting BPDU packets.
+  - Requires no active BPDU guard on the switch's interface.
+
+- **Packet Forwarding**
+  - Forms a bridge between two network interfaces, forwarding packets.
+  - Allows for a Man-In-The-Middle (MITM) attack.
+  - Requires two network interfaces.
+  - Activates ARP spoofing and DNS spoofing when enabled.
+
+- **ARP Spoofing**
+  - Ensures DNS spoofing compatibility with devices that send ARP queries first.
+  - Manipulates ARP responses to redirect data flow.
+
+- **DNS Spoofing**
+  - Reroutes DNS requests to a rogue server.
+  - Intercepts and modifies DNS responses to lead to the attacker's IP.
+
+Please use responsibly and comply with all relevant laws and regulations.
 
 ## License
 
