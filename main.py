@@ -267,12 +267,12 @@ def gui(stdscr_gui):
             fakeip = get_user_input("\nWhat IP do you want to resolve DNS queries to?\nIP Address: ", (ipaddress.IPv4Address,))
             enable_dns_hijack(fakeip, selected_interfaces)
             replace_choice(attacks.dns.start, attacks.dns.stop)
-            stdscr_gui.addstr(f"Enabled DNS hijacking, resolving all DNS queries to {fakeip}. Press any key to return")
+            stdscr_gui.addstr(f"Enabled DNS hijacking, resolving all DNS queries to {fakeip}. Press any key to return\n")
 
         elif action == attacks.dns.stop:
             disable_dns_hijack()
             replace_choice(attacks.dns.stop, attacks.dns.start)
-            stdscr_gui.addstr(f"\nDisabled DNS hijacking. Press any key to return")
+            stdscr_gui.addstr(f"\nDisabled DNS hijacking. Press any key to return\n")
 
         ##################################################################
         # Add more functions here

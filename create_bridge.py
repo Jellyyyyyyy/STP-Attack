@@ -17,10 +17,14 @@ GET_IF_INDEX = 0x8933  # Get interface index; SIOCGIFINDEX
 IF_DOWN = 0x0  # Interface down
 IF_UP = 0x1  # Interface up
 
+config = {
+    "VERBOSE": False
+}
 
-def vprint(msg, verbose):
+
+def vprint(msg):
     """print if verbose is set"""
-    if verbose:
+    if config["VERBOSE"]:
         print(msg)
 
 
@@ -82,12 +86,12 @@ def bring_iface_down(interface_name):
     sock.close()
 
 
-def delete_br_ifaces(bridge_name, verbose=False):
+def delete_br_ifaces(bridge_name):
     """Deletes all interfaces from bridge"""
     interfaces = get_ifaces_in_br(bridge_name)
     for interface in interfaces:
         del_iface_from_br(bridge_name, interface)
-        vprint(f"Removed interface {interface} from bridge {bridge_name}", verbose)
+        vprint(f"Removed interface {interface} from bridge {bridge_name}")
 
 
 def bridge_exists(bridge_name):
@@ -100,10 +104,10 @@ def get_ifaces_in_br(bridge_name):
     return [os.path.basename(p) for p in glob.glob(f"/sys/class/net/{bridge_name}/brif/*")]
 
 
-def verify_bridge(bridge_name, interfaces, verbose=False, verification_attempt=0):
+def verify_bridge(bridge_name, interfaces, verification_attempt=0):
     """Verify that the bridge has both interfaces"""
     if verification_attempt > 5:
-        vprint(f"Could not verify bridge", verbose)
+        vprint(f"Could not verify bridge")
         return False
 
     if bridge_exists(bridge_name):
@@ -111,36 +115,36 @@ def verify_bridge(bridge_name, interfaces, verbose=False, verification_attempt=0
         missing_interfaces = [interface for interface in interfaces if interface not in bridge_interfaces]
 
         if missing_interfaces:
-            vprint(f"The following interfaces are missing from bridge {bridge_name}: {missing_interfaces}", verbose)
-            vprint(f"Deleting bridge {bridge_name} to fix its interfaces", verbose)
+            vprint(f"The following interfaces are missing from bridge {bridge_name}: {missing_interfaces}")
+            vprint(f"Deleting bridge {bridge_name} to fix its interfaces")
             delete_br_ifaces(bridge_name)
             delete_bridge(bridge_name)
-            vprint(f"Creating bridge {bridge_name} with interfaces {interfaces}", verbose)
+            vprint(f"Creating bridge {bridge_name} with interfaces {interfaces}")
             create_bridge(bridge_name)
             for interface in interfaces:
                 add_iface_to_br(bridge_name, interface)
-            if verify_bridge(bridge_name, interfaces, verbose, verification_attempt + 1):
+            if verify_bridge(bridge_name, interfaces, verification_attempt + 1):
                 return True
             return False
         else:
-            vprint(f"Bridge {bridge_name} exists and has the correct interfaces", verbose)
+            vprint(f"Bridge {bridge_name} exists and has the correct interfaces")
             return True
     else:
-        vprint(f"Bridge {bridge_name}, does not exist", verbose)
+        vprint(f"Bridge {bridge_name}, does not exist")
         return False
 
 
-def monitor(bridge_name, interfaces, verbose=False):
+def monitor(bridge_name, interfaces):
     """Monitors the bridge to check if there are missing interfaces, fixes them if anything is wrong"""
     while True:
         if not bridge_exists(bridge_name):
-            vprint(f"Bridge {bridge_name} does not exist, terminating monitoring thread...", verbose)
+            vprint(f"Bridge {bridge_name} does not exist, terminating monitoring thread...")
             return
         else:
             missing_interfaces = [i for i in interfaces if i not in get_ifaces_in_br(bridge_name)]
             if missing_interfaces:
                 vprint(f"The following interfaces are missing from bridge {bridge_name}, adding them: \
-                        {missing_interfaces}", verbose)
+                        {missing_interfaces}")
                 bring_iface_down(bridge_name)
                 for interface in missing_interfaces:
                     add_iface_to_br(bridge_name, interface)
@@ -150,18 +154,19 @@ def monitor(bridge_name, interfaces, verbose=False):
 
 def start(bridge_name, interfaces: list, verbose=False):
     """Creates a bridge and adds the interfaces specified to them"""
-    vprint(f"Creating bridge {bridge_name} with interfaces {', '.join(interfaces)}", verbose)
+    config["VERBOSE"] = verbose
+    vprint(f"Creating bridge {bridge_name} with interfaces {', '.join(interfaces)}")
     create_bridge(bridge_name)
-    vprint(f"Created bridge {bridge_name}", verbose)
+    vprint(f"Created bridge {bridge_name}")
     for interface in interfaces:
         add_iface_to_br(bridge_name, interface)
-        vprint(f"Added interface {interface} to bridge {bridge_name}", verbose)
+        vprint(f"Added interface {interface} to bridge {bridge_name}")
 
     if verify_bridge(bridge_name, interfaces):
         bring_iface_up(bridge_name)
     else:
-        vprint(f"Could not verify bridge, aborting...", verbose)
-        stop(bridge_name, verbose)
+        vprint(f"Could not verify bridge, aborting...")
+        stop(bridge_name)
 
     monitor_thread = Thread(target=monitor, args=(bridge_name, interfaces,))
     monitor_thread.daemon = True
@@ -170,11 +175,12 @@ def start(bridge_name, interfaces: list, verbose=False):
 
 def stop(bridge_name, verbose=False):
     """Removes interfaces from the bridge and deletes bridge"""
+    config["VERBOSE"] = verbose
     if bridge_exists(bridge_name):
-        vprint(f"Found bridge {bridge_name}, deleting...", verbose)
+        vprint(f"Found bridge {bridge_name}, deleting...")
         delete_br_ifaces(bridge_name)
         bring_iface_down(bridge_name)
         delete_bridge(bridge_name)
-        vprint(f"Bridge {bridge_name} deleted.", verbose)
+        vprint(f"Bridge {bridge_name} deleted.")
     else:
-        vprint(f"Bridge {bridge_name} does not exist.", verbose)
+        vprint(f"Bridge {bridge_name} does not exist.")
