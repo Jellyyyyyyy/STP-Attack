@@ -167,6 +167,15 @@ def select_interface(n):
     return interface
 
 
+def get_iface_ip(interface):
+    try:
+        if "No interface available" in interface:
+            return "No interface"
+        return netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
+    except KeyError:
+        return "No IP"
+
+
 def replace_choice(old, new):
     choices.insert(choices.index(old), new)
     choices.remove(old)
@@ -193,9 +202,8 @@ def gui(stdscr_gui):
         print("You need at least 1 network interface. Exiting...")
         sys.exit(1)
 
-    ip1 = netifaces.ifaddresses(interface1)[netifaces.AF_INET][0]['addr']
-    ip2 = netifaces.ifaddresses(interface2)[netifaces.AF_INET][0][
-        'addr'] if "No interface available" not in interface2 else ""
+    ip1 = get_iface_ip(interface1)
+    ip2 = get_iface_ip(interface2)
 
     while True:
         display = f"Interface 1: {interface1} ({ip1})\nInterface 2: {interface2} ({ip2})\n\nChoose what to do"
@@ -242,10 +250,12 @@ def gui(stdscr_gui):
             stdscr_gui.addstr(f"\nDisabled ARP spoofing. Press any key to return\n")
 
         elif action == attacks.dns.start:
-            fakeip = get_user_input("\nWhat IP do you want to resolve DNS queries to?\nIP Address: ", (ipaddress.IPv4Address,))
+            fakeip = get_user_input("\nWhat IP do you want to resolve DNS queries to?\nIP Address: ",
+                                    (ipaddress.IPv4Address,))
             enable_dns_hijack(fakeip, selected_interfaces)
             replace_choice(attacks.dns.start, attacks.dns.stop)
-            stdscr_gui.addstr(f"Enabled DNS hijacking, resolving all DNS queries to {fakeip}. Press any key to return\n")
+            stdscr_gui.addstr(
+                f"Enabled DNS hijacking, resolving all DNS queries to {fakeip}. Press any key to return\n")
 
         elif action == attacks.dns.stop:
             disable_dns_hijack()
@@ -295,8 +305,7 @@ def main():
             "Please make your terminal bigger to run the script.\nAt least 75 characters in length, 25 characters in height.")
         sys.exit(1)
 
-    # Initialise curse GUI
-    curses.wrapper(gui)
+    curses.wrapper(gui)  # Initialise curse GUI
 
 
 if __name__ == '__main__':

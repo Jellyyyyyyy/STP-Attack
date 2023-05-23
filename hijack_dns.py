@@ -63,4 +63,3 @@ def start(fakeip, interfaces, verbose=False):
 def stop(verbose=False):
     config["STOP_SNIFFING"] = True
     vprint("Stopped DNS sniffing and hijacking")
-
