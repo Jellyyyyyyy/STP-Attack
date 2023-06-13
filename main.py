@@ -15,6 +15,7 @@ from scapy.contrib.dtp import DTP, DTPDomain, DTPStatus, DTPType, DTPNeighbor
 from scapy.layers.l2 import LLC, SNAP, Dot3
 from time import sleep
 from typing import Optional
+import subprocess
 
 try:
     with open('configs/config', 'r') as f:
@@ -34,6 +35,7 @@ choices = [getattr(getattr(attacks, attr), 'start', None) for attr in vars(attac
            attr != 'quit' and getattr(getattr(attacks, attr), 'enabled', False)] + [getattr(attacks, 'quit')]
 verbose = config.verbose
 stdscr: Optional[curses.window] = None  # For GUI
+has_iptables = False
 stop_hijack_event = threading.Event()
 stop_dtp_event = threading.Event()
 system_interfaces = netifaces.interfaces()
@@ -58,6 +60,10 @@ def hijack(event, interfaces, pkt):
     pkt[0].bridgemac = attacks.hijack.settings.mac_address
     while not event.is_set():
         for interface in interfaces:
+            if interface == "eth1":
+                pkt[0].pathcost = 5
+            else:
+                pkt[0].pathcost = 1
             sendp(pkt[0], loop=0, verbose=0, iface=interface)
         sleep(attacks.hijack.settings.interval)
 
@@ -86,11 +92,19 @@ def disable_arp_spoof():
 
 
 def enable_dns_hijack(fakeip, interfaces):
+    global has_iptables
     hijack_dns.start(fakeip, interfaces, verbose=verbose)
+    if config.use_iptables:
+        hijack_dns.iptables("create")
+        has_iptables = True
 
 
 def disable_dns_hijack():
+    global has_iptables
     hijack_dns.stop(verbose=verbose)
+    if config.use_iptables:
+        hijack_dns.iptables("remove")
+        has_iptables = False
 
 
 def display_banner(extra=""):
@@ -126,6 +140,13 @@ def select_option(options, title):
 
 
 def get_user_input(prompt, type_check: tuple = (int, float, str, bool, complex)):
+    """
+    Gets the user input in the GUI.
+    prompt : str - Enter a prompt to let the user know what input they should enter
+    type_check : tuple - Provide a tuple of acceptable data types (Optional)
+    Note: If user enters empty string, it will not go through the type check. Program should account for returning
+    empty strings which count towards cancelling the input.
+    """
     stdscr.clear()
     display_banner()
     while True:
@@ -133,6 +154,9 @@ def get_user_input(prompt, type_check: tuple = (int, float, str, bool, complex))
         stdscr.refresh()
         curses.echo()
         user_input = stdscr.getstr().decode('utf-8')
+
+        if user_input == "":
+            return ""
 
         for t in type_check:
             try:
@@ -167,13 +191,22 @@ def select_interface(n):
     return interface
 
 
+def get_iface_ip(interface):
+    try:
+        if "No interface available" in interface:
+            return "No interface"
+        return netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
+    except KeyError:
+        return "No IP"
+
+
 def replace_choice(old, new):
     choices.insert(choices.index(old), new)
     choices.remove(old)
 
 
 def gui(stdscr_gui):
-    display_banner(f"\n\nVersion: {config.version}\n\n\nPress any key to Start")
+    display_banner(f"\n\nVersion: {config.version}\n\n\nPress any key to Start\n")
     stdscr_gui.getch()
 
     if len(system_interfaces) > 2:
@@ -193,9 +226,8 @@ def gui(stdscr_gui):
         print("You need at least 1 network interface. Exiting...")
         sys.exit(1)
 
-    ip1 = netifaces.ifaddresses(interface1)[netifaces.AF_INET][0]['addr']
-    ip2 = netifaces.ifaddresses(interface2)[netifaces.AF_INET][0][
-        'addr'] if "No interface available" not in interface2 else ""
+    ip1 = get_iface_ip(interface1)
+    ip2 = get_iface_ip(interface2)
 
     while True:
         display = f"Interface 1: {interface1} ({ip1})\nInterface 2: {interface2} ({ip2})\n\nChoose what to do"
@@ -242,18 +274,29 @@ def gui(stdscr_gui):
             stdscr_gui.addstr(f"\nDisabled ARP spoofing. Press any key to return\n")
 
         elif action == attacks.dns.start:
-            fakeip = get_user_input("\nWhat IP do you want to resolve DNS queries to?\nIP Address: ", (ipaddress.IPv4Address,))
+            interfaces_str = display.replace('\nChoose what to do', '')
+            fakeip = get_user_input(f"\n{interfaces_str} \
+                                    \nWhat IP do you want to resolve DNS queries to? (Enter nothing to cancel) \
+                                    \nIP Address: ",
+                                    (ipaddress.IPv4Address,))
+            if fakeip == "":
+                continue
             enable_dns_hijack(fakeip, selected_interfaces)
+            sleep(config.stop_time)  # Delay to ensure that thread starts fully
             replace_choice(attacks.dns.start, attacks.dns.stop)
-            stdscr_gui.addstr(f"Enabled DNS hijacking, resolving all DNS queries to {fakeip}. Press any key to return\n")
+            stdscr_gui.addstr(
+                f"Enabled DNS hijacking, resolving all DNS queries to {fakeip}. Press any key to return\n")
 
         elif action == attacks.dns.stop:
+            stdscr_gui.addstr(f"\nStopping DNS hijacking...\n")
+            stdscr_gui.refresh()
             disable_dns_hijack()
+            sleep(config.stop_time)  # Essential delay to let the thread fully exit before allowing another DNS hijack thread
             replace_choice(attacks.dns.stop, attacks.dns.start)
-            stdscr_gui.addstr(f"\nDisabled DNS hijacking. Press any key to return\n")
+            stdscr_gui.addstr(f"Disabled DNS hijacking. Press any key to return\n")
 
         ##################################################################
-        # Add more functions here
+        # Add more functions here - add attacks in configs/attacks
         ##################################################################
 
         stdscr_gui.getch()
@@ -295,8 +338,7 @@ def main():
             "Please make your terminal bigger to run the script.\nAt least 75 characters in length, 25 characters in height.")
         sys.exit(1)
 
-    # Initialise curse GUI
-    curses.wrapper(gui)
+    curses.wrapper(gui)  # Initialise curse GUI
 
 
 if __name__ == '__main__':
@@ -308,5 +350,8 @@ if __name__ == '__main__':
         except Exception:
             pass
     finally:
-        curses.endwin()
+        if stdscr is not None:
+            curses.endwin()
+        if has_iptables:
+            hijack_dns.iptables("remove")
         print("Successfully quit from program. Goodbye :)")
