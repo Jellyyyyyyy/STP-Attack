@@ -5,7 +5,6 @@ from scapy.layers.inet import IP, UDP
 import subprocess
 
 config = {
-    "STOP_SNIFFING": False,
     "VERBOSE": False,
 }
 
@@ -16,19 +15,19 @@ def vprint(msg):
         print(msg)
 
 
-def stop_sniff(pkt):
-    return config["STOP_SNIFFING"]
+def stop_sniff(pkt, dns_hijack_counter):
+    return config[f"STOP_SNIFFING_{dns_hijack_counter}"]
 
 
-def sniffer(fakeip, interfaces):
+def sniffer(fakeip, interfaces, dns_hijack_counter):
     """Continous sniff on specified interfaces and sends fakeip to false response"""
     try:
         pkt = sniff(prn=lambda packet: craft_false_response(packet, fakeip, interfaces),
                     lfilter=lambda packet: packet.haslayer(DNSQR) and packet[DNS].qr == 0 and packet[DNS].opcode == 0,
                     iface=interfaces,
-                    stop_filter=stop_sniff)
+                    stop_filter=lambda packet: stop_sniff(packet, dns_hijack_counter))
     except IndexError:
-        sniffer(fakeip, interfaces)
+        sniffer(fakeip, interfaces, dns_hijack_counter)
 
 
 def craft_false_response(pkt, fakeip, interfaces):
@@ -59,15 +58,15 @@ def iptables(action):
     elif action == "remove":
         subprocess.call("/bin/bash iptables_config.sh -D", shell=True)
 
-def start(fakeip, interfaces, verbose=False):
-    config["STOP_SNIFFING"] = False
+def start(fakeip, interfaces, dns_hijack_counter, verbose=False):
+    config[f"STOP_SNIFFING_{dns_hijack_counter}"] = False
     config["VERBOSE"] = verbose
-    dns_thread = Thread(target=sniffer, args=(fakeip, interfaces,))
+    dns_thread = Thread(target=sniffer, args=(fakeip, interfaces,dns_hijack_counter,))
     dns_thread.daemon = True
     dns_thread.start()
 
 
-def stop(verbose=False):
-    config["STOP_SNIFFING"] = True
+def stop(dns_hijack_counter, verbose=False):
+    config[f"STOP_SNIFFING_{dns_hijack_counter}"] = True
     config["VERBOSE"] = verbose
     vprint("Stopped DNS sniffing and hijacking")

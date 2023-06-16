@@ -1,6 +1,6 @@
 {
-    "version": "1.9.2",
+    "version": "2.0",
     "verbose": false,
     "stop_time": 3,
-    "use_iptables": false
+    "use_iptables": true
 }

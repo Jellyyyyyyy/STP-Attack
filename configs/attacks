@@ -5,7 +5,9 @@
     "stop": "Stop Hijack",
     "settings": {
       "mac_address": "00:00:00:00:00:01",
-      "interval": 2
+      "interval": 2,
+      "interface1_pathcost": 1,
+      "interface2_pathcost": 4
     }
   },
   "forward": {
@@ -15,12 +17,6 @@
     "settings": {
       "bridge_name": "hijack_stp_br"
     }
-  },
-  "arp": {
-    "enabled": true,
-    "start": "Enable ARP spoofing",
-    "stop": "Disable ARP spoofing",
-    "settings": {}
   },
   "dns": {
     "enabled": true,
