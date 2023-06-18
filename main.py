@@ -16,27 +16,28 @@ from time import sleep
 from typing import Optional
 import subprocess
 
-try:
+try:  # Loading of config files
     with open('configs/config', 'r') as f:
         config = json.load(f, object_hook=lambda c: SimpleNamespace(**c))
 except FileNotFoundError:
     print("Config file not found int ./configs")
     sys.exit(1)
 
-try:
+try:  # Loading of config files
     with open('configs/attacks', 'r') as f:
         attacks = json.load(f, object_hook=lambda atk: SimpleNamespace(**atk))
 except FileNotFoundError:
     print("Attack file not found in ./configs")
     sys.exit(1)
 
+# Initialising Variables
 choices = [getattr(getattr(attacks, attr), 'start', None) for attr in vars(attacks) if
            attr != 'quit' and getattr(getattr(attacks, attr), 'enabled', False)] + [getattr(attacks, 'quit')]
 verbose = config.verbose
 stdscr: Optional[curses.window] = None  # For GUI
 has_iptables = False
 dns_hijack_counter = 0
-stop_hijack_event = threading.Event()
+stop_hijack_event = threading.Event()  # Events for stopping threads
 stop_dtp_event = threading.Event()
 system_interfaces = netifaces.interfaces()
 banner = r""" (           (                                          
@@ -63,7 +64,7 @@ def hijack(event, interfaces, pkt):
     while not event.is_set():
         for interface in interfaces:
             if interface == interfaces[0]:
-                pkt[0].pathcost = attacks.hijack.settings.interface1_pathcost
+                pkt[0].pathcost = attacks.hijack.settings.interface1_pathcost  # Configured in configs/attacks
             elif interface == interfaces[1]:
                 pkt[0].pathcost = attacks.hijack.settings.interface2_pathcost
             sendp(pkt[0], loop=0, verbose=0, iface=interface)
@@ -104,7 +105,7 @@ def disable_dns_hijack():
     if attacks.dns.settings.use_iptables:
         hijack_dns.iptables("remove")
         has_iptables = False
-    dns_hijack_counter += 1
+    dns_hijack_counter += 1  # To prevent threads from starting again
 
 
 def display_banner(extra=""):
@@ -128,9 +129,9 @@ def select_option(options, title):
                 stdscr.addstr(f"    {option}\n")
 
         c = stdscr.getch()
-        if c == curses.KEY_UP and selection > 0:
+        if c == curses.KEY_UP and selection > 0:  # Up arrow key
             selection -= 1
-        elif c == curses.KEY_DOWN and selection < len(options) - 1:
+        elif c == curses.KEY_DOWN and selection < len(options) - 1:  # Down arrow key
             selection += 1
         elif c == curses.KEY_ENTER or c == 10 or c == 13:  # Enter key
             stdscr.clear()
@@ -188,7 +189,7 @@ def select_interface(n):
     """Gets the user to choose the interface they wish to use for the attack"""
     stdscr.addstr(banner)
     interface = select_option(system_interfaces, f'Please choose an interface for interface {n}. Note that only Ethernet interfaces can be used')
-    system_interfaces.remove(interface)
+    system_interfaces.remove(interface)  # Remove from selection after selected
     stdscr.addstr(f"\nYou selected {interface} for interface {n}. Press any key to continue\n")
     stdscr.getch()
     return interface
@@ -224,7 +225,8 @@ def gui(stdscr_gui):
         interface2 = "No interface available - Packet forwarding cannot be enabled."
         selected_interfaces = system_interfaces
         choices.remove(attacks.forward.start)
-    elif len(system_interfaces) == 2 and config.skip_choosing_interfaces:
+    elif len(system_interfaces) >= 2 and config.skip_choosing_interfaces:
+        # If skip flag is set (configured in configs) then it will auto pick the first 2 interfaces
         interface1 = system_interfaces[0]
         interface2 = system_interfaces[1]
         selected_interfaces = system_interfaces
@@ -320,8 +322,7 @@ def main():
         return "No network interface detected. Not possible to launch attack. "
     elif len(system_interfaces) < 2:
         print("WARNING: Only 1 network interface detected (loopback cannot be used).")
-        if input("Forwarding packets will not be possible. Do you wish to continue? (Y/N): ").lower() not in ["y", "ye",
-                                                                                                              "yes"]:
+        if input("Forwarding packets will not be possible. Do you wish to continue? (Y/N): ").lower() not in ["y", "ye", "yes"]:
             return
 
     stdscr = curses.initscr()
@@ -337,10 +338,10 @@ def main():
 if __name__ == '__main__':
     error = None
     try:
-        error = main()
+        error = main()  # If it returns a string, there is an error
     except KeyboardInterrupt:
         try:
-            disable_forwarding(config.bridge_name)
+            disable_forwarding(config.bridge_name)  # Deletes bridge if CTRL C is pressed
         except Exception:
             pass
     finally:

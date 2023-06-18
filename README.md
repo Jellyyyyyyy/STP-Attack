@@ -19,6 +19,7 @@ Please make sure to read the full [DISCLAIMER](DISCLAIMER) before using this too
 - [Usage](#usage)
 - [Configuration](#configuration)
 - [Features](#features)
+- [Troubleshooting](#troubleshooting)
 
 ## Prerequisites
 
@@ -119,6 +120,21 @@ Each element of an attack configuration comprises:
   - Uses IP tables to block legitimate DNS responses. Can be disabled in the [attacks configuraiton file](configs/attacks).
 
 Please use responsibly and comply with all relevant laws and regulations.
+
+## Troubleshooting
+
+1. **Hijacking root bridge**
+   - Check that the STP packets are being sent out using wireshark.
+   - Check that the incoming STP packets have the MAC address of what you set in the [config file](configs/config).
+   - Try restarting the program if no for the above.
+2. **Packet forwarding**
+   - Check that before packet forwarding is enabled, the bridge (`hijack_stp_br`) is not created yet. 
+   - Check that after packet forwarding is enabled, the bridge is created.
+   - If it is created before packet forwarding is enabled, delete it with the `brctl` module, `brctl delbr hijack_stp_br`.
+   - If it is not created after packet forwarding is enabled, restart the program
+3. **DNS Hijacking**
+   - Check that there is a web server hosting a website at the IP you specify.
+   - Use Wireshark to see if the DNS packets are being resolved to the specified IP. If no, try restarting the program
 
 ## License
 
