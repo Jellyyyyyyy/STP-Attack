@@ -1,5 +1,5 @@
 {
-    "version": "2.0.2",
+    "version": "2.0.3",
     "verbose": false,
     "stop_time": 3,
     "skip_choosing_interfaces": false
