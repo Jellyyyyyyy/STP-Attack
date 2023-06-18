@@ -6,8 +6,8 @@
     "settings": {
       "mac_address": "00:00:00:00:00:01",
       "interval": 2,
-      "interface1_pathcost": 1,
-      "interface2_pathcost": 4
+      "interface1_pathcost": 4,
+      "interface2_pathcost": 1
     }
   },
   "forward": {
@@ -22,7 +22,9 @@
     "enabled": true,
     "start": "Enable DNS hijacking",
     "stop": "Disable DNS hijacking",
-    "settings": {}
+    "settings": {
+      "use_iptables": true
+    }
   },
   "quit": "Quit (stops all attacks)"
 }
