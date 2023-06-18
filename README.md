@@ -7,11 +7,17 @@
 An interactive Python program capable of sending Bridge Protocol Data Unit (BPDU) packets to hijack the root bridge in a network and enable packet forwarding using a bridge.
 The script uses the `curses`, `scapy` and `netifaces` libraries to establish the compromised switch as the root switch, enabling the user to gain access to the packets in the network for various attacks (see [Features](#features)).
 
+## Disclaimer
+
+This tool is developed for educational and ethical use within authorized environments only. 
+Please make sure to read the full [DISCLAIMER](DISCLAIMER) before using this tool.
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Usage](#usage)
+- [Configuration](#configuration)
 - [Features](#features)
 
 ## Prerequisites
@@ -48,24 +54,69 @@ sudo python3 main.py
 
 The tool provides a terminal-based GUI where you can choose from various options. Follow the instructions on the screen to perform the desired actions.
 
+## Configuration
+
+This tool offers some configurations, primarily administered through two key files: `configs/config` and `configs/attacks`. Each file houses its own set of customizable options:
+
+### configs/config
+
+Here is a glimpse of what `configs/config` file looks like:
+
+```json
+{
+    "version": "2.0",
+    "verbose": false,
+    "stop_time": 3,
+    "skip_choosing_interfaces": false
+}
+```
+
+The fields are defined as follows:
+
+- `version`: Specifies the current version of the attack tool.
+- `verbose`: If set to `true`, it enables debug information. Please be aware that this feature is under development, and you may encounter issues with string formatting in the console.
+- `stop_time`: Defines the time delay (in seconds) when halting an attack, except for packet forwarding.
+- `skip_choosing_interfaces`: If the system detects only two interfaces, setting this to `true` bypasses the interface selection process.
+
+### configs/attacks
+
+Each attack is structured following the basic template below:
+
+```json
+"attack_name": {
+    "enabled": true,
+    "start": "Start Root Bridge Hijack",
+    "stop": "Stop Hijack",
+    "settings": {}
+}
+```
+
+Each element of an attack configuration comprises:
+
+- `attack_name`: Indicates the unique name of the attack.
+- `enabled`: Determines whether the attack appears in the attack tool menu.
+- `start`: Represents the label for initiating the attack in the attack tool menu.
+- `stop`: Represents the label for terminating the attack in the attack tool menu.
+- `settings`: This is a placeholder for custom settings for each specific attack. 
+
+
 ## Features
 
 - **Root Bridge Hijacking**
   - Manipulates the root bridge by transmitting superior BPDU packets.
   - Requires no active BPDU guard on the switch's interface.
+  - Interval between sending out BPDU packets can be configured in the [attacks configuraiton file](configs/attacks).
+  - Path cost for interface 1 and 2 can also be configured in [attacks configuraiton file](configs/attacks).
 
 - **Packet Forwarding**
   - Forms a bridge between two network interfaces, forwarding packets.
   - Allows for a Man-In-The-Middle (MITM) attack.
   - Requires two network interfaces.
 
-- **ARP Spoofing**
-  - Ensures DNS spoofing compatibility with devices that send ARP queries first.
-  - Manipulates ARP responses to redirect data flow.
-
 - **DNS Spoofing**
-  - Reroutes DNS requests to a rogue server.
+  - Relies on being the root bridge to intercept DNS queries.
   - Intercepts and modifies DNS responses to lead to the IP that the attacker specifies.
+  - Uses IP tables to block legitimate DNS responses. Can be disabled in the [attacks configuraiton file](configs/attacks).
 
 Please use responsibly and comply with all relevant laws and regulations.
 

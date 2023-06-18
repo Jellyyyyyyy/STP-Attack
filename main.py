@@ -47,8 +47,8 @@ banner = r""" (           (
 / __||_   _|| _ \   (_)_\(_)| |_ | |_ ((_)_  ((_)| |(_) 
 \__ \  | |  |  _/    / _ \  |  _||  _|/ _` |/ _| | / /  
 |___/  |_|  |_|     /_/ \_\  \__| \__|\__,_|\__| |_\_\  
+Authors: Jellyyyyyyy, Helihi, Nichonoob, VictorTZY
 
-Authors: Jellyyyyyyy, Helihi
 Use Arrow keys to navigate and Enter to choose an option
 """
 
@@ -87,7 +87,7 @@ def disable_forwarding(bridge_name: str):
 def enable_dns_hijack(fakeip, interfaces):
     global has_iptables, dns_hijack_counter
     hijack_dns.start(fakeip, interfaces, dns_hijack_counter, verbose=verbose)
-    if config.use_iptables:
+    if attacks.dns.settings.use_iptables:
         hijack_dns.iptables("create")
         has_iptables = True
 
@@ -95,7 +95,7 @@ def enable_dns_hijack(fakeip, interfaces):
 def disable_dns_hijack():
     global has_iptables, dns_hijack_counter
     hijack_dns.stop(dns_hijack_counter, verbose=verbose)
-    if config.use_iptables:
+    if attacks.dns.settings.use_iptables:
         hijack_dns.iptables("remove")
         has_iptables = False
     dns_hijack_counter += 1
@@ -178,7 +178,7 @@ def get_user_input(prompt, type_check: tuple = (int, float, str, bool, complex))
 
 def select_interface(n):
     stdscr.addstr(banner)
-    interface = select_option(system_interfaces, f'Please choose an interface for interface {n}. Note that only Ethernet interfaces can be used.')
+    interface = select_option(system_interfaces, f'Please choose an interface for interface {n}. Note that only Ethernet interfaces can be used')
     system_interfaces.remove(interface)
     stdscr.addstr(f"\nYou selected {interface} for interface {n}. Press any key to continue\n")
     stdscr.getch()
@@ -203,22 +203,23 @@ def gui(stdscr_gui):
     display_banner(f"\n\nVersion: {config.version}\n\n\nPress any key to Start\n")
     stdscr_gui.getch()
 
-    if len(system_interfaces) > 2:
-        interface1 = select_interface(1)
-        interface2 = select_interface(2)
-        selected_interfaces = [interface1, interface2]
-    elif len(system_interfaces) == 2:
-        interface1 = system_interfaces[0]
-        interface2 = system_interfaces[1]
-        selected_interfaces = system_interfaces
-    elif len(system_interfaces) == 1:
+    system_interfaces.sort()  # QoL
+    if len(system_interfaces) == 0:
+        print("You need at least 1 network interface. Exiting...")
+        sys.exit(1)
+    if len(system_interfaces) == 1:
         interface1 = system_interfaces[0]
         interface2 = "No interface available - Packet forwarding cannot be enabled."
         selected_interfaces = system_interfaces
         choices.remove(attacks.forward.start)
+    elif len(system_interfaces) == 2 and config.skip_choosing_interfaces:
+        interface1 = system_interfaces[0]
+        interface2 = system_interfaces[1]
+        selected_interfaces = system_interfaces
     else:
-        print("You need at least 1 network interface. Exiting...")
-        sys.exit(1)
+        interface1 = select_interface(1)
+        interface2 = select_interface(2)
+        selected_interfaces = [interface1, interface2]
 
     ip1 = get_iface_ip(interface1)
     ip2 = get_iface_ip(interface2)
@@ -297,37 +298,33 @@ def check_terminal_size(min_width, min_height):
 def main():
     global stdscr
     if system() != 'Linux':
-        print("This script is only supported on Linux machines.")
-        sys.exit(1)
+        return "This script is only supported on Linux machines."
     if os.geteuid() != 0:
-        print("Please run this script with root privileges (sudo)")
-        sys.exit(1)
+        return "Please run this script with root privileges (sudo)"
 
     system_interfaces.remove("lo")  # loopback interface cannot be used
     if len(system_interfaces) < 1:
-        print("No network interface detected. Not possible to launch attack. ")
-        sys.exit(1)
+        return "No network interface detected. Not possible to launch attack. "
     elif len(system_interfaces) < 2:
         print("WARNING: Only 1 network interface detected (loopback cannot be used).")
         if input("Forwarding packets will not be possible. Do you wish to continue? (Y/N): ").lower() not in ["y", "ye",
                                                                                                               "yes"]:
-            sys.exit(1)
+            return
 
     stdscr = curses.initscr()
     curses.cbreak()
     stdscr.keypad(True)
 
-    if not check_terminal_size(75, 24):
-        print(
-            "Please make your terminal bigger to run the script.\nAt least 75 characters in length, 25 characters in height.")
-        sys.exit(1)
+    if not check_terminal_size(90, 30):
+        return "Please make your terminal bigger to run the script.\nAt least 90 characters in length, 30 characters in height."
 
     curses.wrapper(gui)  # Initialise curse GUI
 
 
 if __name__ == '__main__':
+    error = None
     try:
-        main()
+        error = main()
     except KeyboardInterrupt:
         try:
             disable_forwarding(config.bridge_name)
@@ -338,4 +335,6 @@ if __name__ == '__main__':
             curses.endwin()
         if has_iptables:
             hijack_dns.iptables("remove")
+        if error is not None:
+            print(error)
         print("Successfully quit from program. Goodbye :)")
